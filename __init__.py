@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Additional Artists Details
 """
-# Copyright (C) 2023-2024 Bob Swift (rdswift)
+# Copyright (C) 2023-2025 Bob Swift (rdswift)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -145,7 +145,8 @@ class ArtistDetailsPlugin:
     albums = {}
     album_area_requests = {}
 
-    api = None
+    def __init__(self, api: PluginApi):
+        self.api = api
 
     def _add_album_area_request(self, album_id, area_id):
         if album_id not in self.album_area_requests:
@@ -187,7 +188,7 @@ class ArtistDetailsPlugin:
         Args:
             album_id (str): MBID of the album to remove.
         """
-        api.logger.debug(*log_helper("Removing album '%s'", album_id))
+        self.api.logger.debug(*log_helper("Removing album '%s'", album_id))
         self.albums.pop(album_id, None)
         self.album_processing_count.pop(album_id, None)
 
@@ -216,50 +217,47 @@ class ArtistDetailsPlugin:
             self._save_artist_metadata(album.id)
             album._finalize_loading(None)   # pylint: disable=protected-access
 
-    def remove_album(self, plugin_api: PluginApi, album):
+    def remove_album(self, _api: PluginApi, album):
         """Remove the album from the albums processing dictionary.
 
         Args:
+            _api (PluginApi): The plugin API object.
             album (api.Album): The album object to remove.
         """
-        global api
-        api = plugin_api
         self._remove_album(album.id)
 
-    def make_album_vars(self, plugin_api: PluginApi, album, album_metadata, _release_metadata):
+    def make_album_vars(self, _api: PluginApi, album, album_metadata, _release_metadata):
         """Process album artists.
 
         Args:
+            _api (PluginApi): The plugin API object.
             album (api.Album): The Album object to use for the processing.
             album_metadata (api.Metadata): Metadata object for the album.
             _release_metadata (dict): Dictionary of release data from MusicBrainz api.
         """
-        global api
-        api = plugin_api
         artists = set(artist.id for artist in album.get_album_artists())
         self._make_empty_target(album.id)
         self.albums[album.id][ALBUM_ARTISTS] = artists
-        if not api.global_config.setting[OPT_PROCESS_TRACKS]:
-            api.logger.info(*log_helper("Track artist processing is disabled."))
+        if not self.api.global_config.setting[OPT_PROCESS_TRACKS]:
+            self.api.logger.info(*log_helper("Track artist processing is disabled."))
         self._artist_processing(artists, album, album_metadata, 'Album')
 
-    def make_track_vars(self, plugin_api: PluginApi, album, album_metadata, track_metadata, _release_metadata):
+    def make_track_vars(self, _api: PluginApi, album, album_metadata, track_metadata, _release_metadata):
         """Process track artists.
 
         Args:
+            _api (PluginApi): The plugin API object.
             album (api.Album): The Album object to use for the processing.
             album_metadata (api.Metadata): Metadata object for the album.
             track_metadata (dict): Dictionary of track data from MusicBrainz api.
             _release_metadata (dict): Dictionary of release data from MusicBrainz api.
         """
-        global api
-        api = plugin_api
         artists = set()
         source_type = 'track'
         # Test for valid metadata node.
         # The 'artist-credit' key should always be there.
         # This check is to avoid a runtime error if it doesn't exist for some reason.
-        if api.global_config.setting[OPT_PROCESS_TRACKS]:
+        if self.api.global_config.setting[OPT_PROCESS_TRACKS]:
             if 'artist-credit' in track_metadata:
                 for artist_credit in track_metadata['artist-credit']:
                     if 'artist' in artist_credit:
@@ -285,10 +283,10 @@ class ArtistDetailsPlugin:
         for temp_id in artists:
             if temp_id not in self.result_cache[ARTIST_REQUESTS]:
                 self.result_cache[ARTIST_REQUESTS].add(temp_id)
-                api.logger.debug(*log_helper('Retrieving artist ID %s information from MusicBrainz.', temp_id))
+                self.api.logger.debug(*log_helper('Retrieving artist ID %s information from MusicBrainz.', temp_id))
                 self._get_artist_info(temp_id, album)
             else:
-                api.logger.debug(*log_helper('%s artist ID %s information available from cache.', source_type, temp_id))
+                self.api.logger.debug(*log_helper('%s artist ID %s information available from cache.', source_type, temp_id))
         self._add_target(album.id, artists, destination_metadata)
         self._save_artist_metadata(album.id)
 
@@ -303,7 +301,7 @@ class ArtistDetailsPlugin:
         if self._get_album_area_request_count(album_id) > 0:
             return
         if album_id not in self.albums or not self.albums[album_id][TRACKS]:
-            api.logger.error(*log_helper("No metadata targets found for album '%s'", album_id))
+            self.api.logger.error(*log_helper("No metadata targets found for album '%s'", album_id))
             return
         for item in self.albums[album_id][TRACKS]:
             # Add album artists to track so they are available in the metadata
@@ -334,7 +332,7 @@ class ArtistDetailsPlugin:
             else:
                 _set_item(item, artist_info[item])
 
-    def _get_artist_info(self, artist_id, album):
+    def _get_artist_info(self, artist_id: str, album: PluginApi.Album):
         """Gets the artist information from the MusicBrainz website.
 
         Args:
@@ -355,7 +353,7 @@ class ArtistDetailsPlugin:
         """
         try:
             if error:
-                api.logger.error(*log_helper("Artist '%s' information retrieval error.", artist))
+                self.api.logger.error(*log_helper("Artist '%s' information retrieval error.", artist))
                 return
             artist_info = {}
             for item in ['type', 'gender', 'name', 'sort-name', 'disambiguation']:
@@ -375,7 +373,7 @@ class ArtistDetailsPlugin:
         finally:
             self._album_remove_request(album)
 
-    def _get_area_info(self, area_id, album):
+    def _get_area_info(self, area_id, album: PluginApi.Album):
         """Gets the area information from the MusicBrainz website.
 
         Args:
@@ -385,7 +383,7 @@ class ArtistDetailsPlugin:
         self.result_cache[AREA_REQUESTS].add(area_id)
         self._album_add_request(album)
         self._add_album_area_request(album.id, area_id)
-        api.logger.debug(*log_helper('Retrieving area ID %s from MusicBrainz.', area_id))
+        self.api.logger.debug(*log_helper('Retrieving area ID %s from MusicBrainz.', area_id))
         helper = CustomHelper(album.tagger.webservice)
         handler = partial(
             self._area_submission_handler,
@@ -399,7 +397,7 @@ class ArtistDetailsPlugin:
         """
         try:
             if error:
-                api.logger.error(*log_helper("Area '%s' information retrieval error.", area))
+                self.api.logger.error(*log_helper("Area '%s' information retrieval error.", area))
                 return
             (_id, name, country, _type, type_text) = self._parse_area(document)
             if _type == AREA_TYPE_COUNTRY and _id not in self.result_cache[AREA]:
@@ -412,8 +410,7 @@ class ArtistDetailsPlugin:
             self._remove_album_area_request(album.id, area)
             self._album_remove_request(album)
 
-    @staticmethod
-    def _area_logger(area_id, area_name, area_type):
+    def _area_logger(self, area_id, area_name, area_type):
         """Adds a log entry for the area retrieved.
 
         Args:
@@ -421,7 +418,7 @@ class ArtistDetailsPlugin:
             area_name (str): Name of the area added.
             area_type (str): Type of area added.
         """
-        api.logger.debug(*log_helper("Adding area: %s => %s of type '%s'", area_id, area_name, area_type))
+        self.api.logger.debug(*log_helper("Adding area: %s => %s of type '%s'", area_id, area_name, area_type))
 
     def _parse_area_relation(self, area_id, area_relation, album, area_name, area_type, area_type_text):
         """Parse an area relation to extract the area information.
@@ -489,8 +486,7 @@ class ArtistDetailsPlugin:
                 country = area_info[ISO_CODES_2][0][:2]
         return (area_id, area_name, country, area_type, area_type_text)
 
-    @staticmethod
-    def _metadata_error(album_id, metadata_element, metadata_group):
+    def _metadata_error(self, album_id, metadata_element, metadata_group):
         """Logs metadata-related errors.
 
         Args:
@@ -498,7 +494,7 @@ class ArtistDetailsPlugin:
             metadata_element (str): Metadata element initiating the error.
             metadata_group (str): Metadata group initiating the error.
         """
-        api.logger.error(*log_helper("Album '%s' missing '%s' in %s metadata.", album_id, metadata_element, metadata_group))
+        self.api.logger.error(*log_helper("Album '%s' missing '%s' in %s metadata.", album_id, metadata_element, metadata_group))
 
     def _drill_area(self, area_id):
         """Drills up from the specified area to determine the two-character
@@ -523,9 +519,9 @@ class ArtistDetailsPlugin:
                 location.append(area.name)
             else:
                 if (
-                    (area.type == AREA_TYPE_COUNTY and api.global_config.setting[OPT_AREA_COUNTY])
-                    or (area.type == AREA_TYPE_MUNICIPALITY and api.global_config.setting[OPT_AREA_MUNICIPALITY])
-                    or (area.type == AREA_TYPE_SUBDIVISION and api.global_config.setting[OPT_AREA_SUBDIVISION])
+                    (area.type == AREA_TYPE_COUNTY and self.api.global_config.setting[OPT_AREA_COUNTY])
+                    or (area.type == AREA_TYPE_MUNICIPALITY and self.api.global_config.setting[OPT_AREA_MUNICIPALITY])
+                    or (area.type == AREA_TYPE_SUBDIVISION and self.api.global_config.setting[OPT_AREA_SUBDIVISION])
                 ):
                     location.append(area.name)
         return country, ', '.join(location)
@@ -573,11 +569,9 @@ class AdditionalArtistsDetailsOptionsPage(OptionsPage):
         self.api.global_config.setting[OPT_AREA_SUBDIVISION] = self.ui.cb_area_subdivision.isChecked()
 
 
-plugin = ArtistDetailsPlugin()
-
-
 def enable(api: PluginApi):
     """Called when plugin is enabled."""
+    plugin = ArtistDetailsPlugin(api)
     api.register_options_page(AdditionalArtistsDetailsOptionsPage)
     api.register_album_post_removal_processor(plugin.remove_album)
 

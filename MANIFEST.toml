@@ -1,16 +1,40 @@
 uuid = "81fd1f5f-f723-498f-a82e-17fb4163c83a"
 name = "Additional Artists Details"
 authors = ["Bob Swift"]
-version = "0.6"
-description = """
-This plugin provides specialized album and track variables with artist details for use in tagging and naming scripts.
-"""
+description = "This plugin provides specialized album and track variables with artist details for use in tagging and naming scripts."
 api = ['3.0']
 license = "GPL-2.0-or-later"
 license_url = "https://www.gnu.org/licenses/gpl-2.0.html"
 long_description = """
-This plugin provides specialized album and track variables with artist details for use in tagging and naming scripts.  Note that this creates
-additional calls to the MusicBrainz API for the artist and area information, and this will slow down processing.  This will be particularly
-noticable when there are many different album or track artists, such as on a [Various Artists] release.  There is an option to disable track
+This plugin provides specialized album and track variables with artist details for use in tagging and naming scripts. Note that this creates
+additional calls to the MusicBrainz API for the artist and area information, and this will slow down processing. This will be particularly
+noticable when there are many different album or track artists, such as on a [Various Artists] release. There is an option to disable track
 artist processing, which can significantly increase the processing speed if you are only interested in album artist details.
+"""
+categories = ["metadata"]
+homepage = "https://picard-plugins-user-guides.readthedocs.io/en/latest/additional_artists_details/user_guide.html"
+
+[name_i18n]
+de = "Weitere Details zu den Künstlern"
+fr = "Détails supplémentaires sur les artistes"
+
+[description_i18n]
+de = "Dieses Plugin stellt spezielle Album- und Titelvariablen mit Künstlerinformationen zur Verwendung in Tagging- und Benennungsskripten bereit."
+fr = "Ce plugin fournit des variables spécialisées pour les albums et les pistes, avec des informations sur les artistes, à utiliser dans les scripts de balisage et de nommage."
+
+[long_description_i18n]
+de = """
+Dieses Plugin stellt spezielle Album- und Titelvariablen mit Künstlerinformationen zur Verwendung in Tagging- und Benennungsskripten bereit.
+Beachten Sie, dass dadurch zusätzliche Aufrufe der MusicBrainz-API für die Künstler- und Gebietsinformationen erzeugt werden, was die
+Verarbeitung verlangsamt. Dies macht sich besonders dann bemerkbar, wenn es viele verschiedene Album- oder Titelkünstler gibt, wie
+beispielsweise bei einer Veröffentlichung von [Various Artists]. Es gibt eine Option zum Deaktivieren der Track-Interpretenverarbeitung,
+wodurch die Verarbeitungsgeschwindigkeit erheblich gesteigert werden kann, wenn Sie nur an den Details zum Albuminterpreten interessiert sind.
+"""
+
+fr = """
+Ce plugin fournit des variables spécialisées pour les albums et les pistes avec des détails sur les artistes, à utiliser dans les scripts de
+balisage et de nommage. Notez que cela crée des appels supplémentaires à l'API MusicBrainz pour les informations sur les artistes et les zones,
+ce qui ralentit le traitement. Cela sera particulièrement visible lorsqu'il y a de nombreux artistes différents pour un album ou une piste,
+comme dans le cas d'une sortie [Various Artists]. Il existe une option permettant de désactiver le traitement des artistes de pistes,
+ce qui peut augmenter considérablement la vitesse de traitement si vous ne vous intéressez qu'aux détails sur les artistes d'albums.
 """

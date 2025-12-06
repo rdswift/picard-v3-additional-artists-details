@@ -27,7 +27,6 @@
 from collections import namedtuple
 from functools import partial
 
-from picard import options
 from picard.plugin3.api import (
     OptionsPage,
     PluginApi,
@@ -38,6 +37,8 @@ from .ui_options_additional_artists_details import (
     Ui_AdditionalArtistsDetailsOptionsPage,
 )
 
+
+USER_GUIDE_URL = 'https://picard-plugins-user-guides.readthedocs.io/en/latest/additional_artists_variables/user_guide.html'
 
 # Named tuples for code clarity
 Area = namedtuple('Area', ['parent', 'name', 'country', 'type', 'type_text'])
@@ -69,21 +70,6 @@ OPT_PROCESS_TRACKS = 'aad_process_tracks'
 TRACKS = 'tracks'
 
 PLUGIN_NAME = "Additional Artists Details"
-
-
-def log_helper(text, *args):
-    """Logging helper to prepend the plugin name to the text.
-
-    Args:
-        text (str): Text to log.
-        args (list): List of text replacement arguments.
-
-    Returns:
-        list: updated text and replacement arguments.
-    """
-    retval = ["%s: " + text, PLUGIN_NAME]
-    retval.extend(args)
-    return retval
 
 
 class CustomHelper(MBAPIHelper):
@@ -188,7 +174,7 @@ class ArtistDetailsPlugin:
         Args:
             album_id (str): MBID of the album to remove.
         """
-        self.api.logger.debug(*log_helper("Removing album '%s'", album_id))
+        self.api.logger.debug("Removing album '%s'", album_id)
         self.albums.pop(album_id, None)
         self.album_processing_count.pop(album_id, None)
 
@@ -239,7 +225,7 @@ class ArtistDetailsPlugin:
         self._make_empty_target(album.id)
         self.albums[album.id][ALBUM_ARTISTS] = artists
         if not self.api.global_config.setting[OPT_PROCESS_TRACKS]:
-            self.api.logger.info(*log_helper("Track artist processing is disabled."))
+            self.api.logger.info("Track artist processing is disabled.")
         self._artist_processing(artists, album, album_metadata, 'Album')
 
     def make_track_vars(self, _api: PluginApi, album, album_metadata, track_metadata, _release_metadata):
@@ -283,10 +269,10 @@ class ArtistDetailsPlugin:
         for temp_id in artists:
             if temp_id not in self.result_cache[ARTIST_REQUESTS]:
                 self.result_cache[ARTIST_REQUESTS].add(temp_id)
-                self.api.logger.debug(*log_helper('Retrieving artist ID %s information from MusicBrainz.', temp_id))
+                self.api.logger.debug('Retrieving artist ID %s information from MusicBrainz.', temp_id)
                 self._get_artist_info(temp_id, album)
             else:
-                self.api.logger.debug(*log_helper('%s artist ID %s information available from cache.', source_type, temp_id))
+                self.api.logger.debug('%s artist ID %s information available from cache.', source_type, temp_id)
         self._add_target(album.id, artists, destination_metadata)
         self._save_artist_metadata(album.id)
 
@@ -301,7 +287,7 @@ class ArtistDetailsPlugin:
         if self._get_album_area_request_count(album_id) > 0:
             return
         if album_id not in self.albums or not self.albums[album_id][TRACKS]:
-            self.api.logger.error(*log_helper("No metadata targets found for album '%s'", album_id))
+            self.api.logger.error("No metadata targets found for album '%s'", album_id)
             return
         for item in self.albums[album_id][TRACKS]:
             # Add album artists to track so they are available in the metadata
@@ -353,7 +339,7 @@ class ArtistDetailsPlugin:
         """
         try:
             if error:
-                self.api.logger.error(*log_helper("Artist '%s' information retrieval error.", artist))
+                self.api.logger.error("Artist '%s' information retrieval error.", artist)
                 return
             artist_info = {}
             for item in ['type', 'gender', 'name', 'sort-name', 'disambiguation']:
@@ -383,7 +369,7 @@ class ArtistDetailsPlugin:
         self.result_cache[AREA_REQUESTS].add(area_id)
         self._album_add_request(album)
         self._add_album_area_request(album.id, area_id)
-        self.api.logger.debug(*log_helper('Retrieving area ID %s from MusicBrainz.', area_id))
+        self.api.logger.debug('Retrieving area ID %s from MusicBrainz.', area_id)
         helper = CustomHelper(album.tagger.webservice)
         handler = partial(
             self._area_submission_handler,
@@ -397,7 +383,7 @@ class ArtistDetailsPlugin:
         """
         try:
             if error:
-                self.api.logger.error(*log_helper("Area '%s' information retrieval error.", area))
+                self.api.logger.error("Area '%s' information retrieval error.", area)
                 return
             (_id, name, country, _type, type_text) = self._parse_area(document)
             if _type == AREA_TYPE_COUNTRY and _id not in self.result_cache[AREA]:
@@ -418,7 +404,7 @@ class ArtistDetailsPlugin:
             area_name (str): Name of the area added.
             area_type (str): Type of area added.
         """
-        self.api.logger.debug(*log_helper("Adding area: %s => %s of type '%s'", area_id, area_name, area_type))
+        self.api.logger.debug("Adding area: %s => %s of type '%s'", area_id, area_name, area_type)
 
     def _parse_area_relation(self, area_id, area_relation, album, area_name, area_type, area_type_text):
         """Parse an area relation to extract the area information.
@@ -494,7 +480,7 @@ class ArtistDetailsPlugin:
             metadata_element (str): Metadata element initiating the error.
             metadata_group (str): Metadata group initiating the error.
         """
-        self.api.logger.error(*log_helper("Album '%s' missing '%s' in %s metadata.", album_id, metadata_element, metadata_group))
+        self.api.logger.error("Album '%s' missing '%s' in %s metadata.", album_id, metadata_element, metadata_group)
 
     def _drill_area(self, area_id):
         """Drills up from the specified area to determine the two-character
@@ -535,18 +521,53 @@ class AdditionalArtistsDetailsOptionsPage(OptionsPage):
     TITLE = "Additional Artists Details"
     PARENT = "plugins"
 
-    options = [
-        options.BoolOption('setting', OPT_PROCESS_TRACKS, False),
-        options.BoolOption('setting', OPT_AREA_COUNTY, True),
-        options.BoolOption('setting', OPT_AREA_MUNICIPALITY, True),
-        options.BoolOption('setting', OPT_AREA_SUBDIVISION, True),
-    ]
-
     def __init__(self, api: PluginApi = None, parent=None):
         super(AdditionalArtistsDetailsOptionsPage, self).__init__(parent)
         self.api = api
+        self.TITLE = self.api.tr('options.page_title', "Additional Artists Details")
+
         self.ui = Ui_AdditionalArtistsDetailsOptionsPage()
         self.ui.setupUi(self)
+
+        # Add translations
+        self.ui.gb_description.setTitle(self.api.tr("ui.gb_description", "Additional Artists Details"))
+        self.ui.format_description.setText(
+            self.api.tr(
+                "ui.format_description",
+                (
+                    "<html><head/><body><p>These settings will determine how the <span style=\" font-weight:600;\">Additional "
+                    "Artists Details</span> plugin operates.</p><p>Please see the <a href=\"{url}\"><span style=\" text-decoration: "
+                    "underline; color:#0000ff;\">User Guide</span></a> for additional information.</p></body></html>"
+                )
+            ).format(url=USER_GUIDE_URL)
+        )
+        self.ui.gb_process_track_artists.setTitle(self.api.tr("ui.gb_process_track_artists", "Process Track Artists"))
+        self.ui.label.setText(
+            self.api.tr(
+                "ui.label_track_artists",
+                (
+                    "<html><head/><body><p>This option determines whether or not details are retrieved for all track artists on the "
+                    "release. If you are only interested in details for the album artists then this should be disabled, thus "
+                    "significantly reducing the number of additional calls made to the MusicBrainz api and reducing the time required "
+                    "to load a release. Album artists are always processed.</p></body></html>"
+                )
+            )
+        )
+        self.ui.cb_process_tracks.setText(self.api.tr("ui.cb_process_tracks", "Process track artists"))
+        self.ui.gb_area_details.setTitle(self.api.tr("ui.gb_area_details", "Include Area Details"))
+        self.ui.label_2.setText(
+            self.api.tr(
+                "ui.label_details",
+                (
+                    "<html><head/><body><p>This option determines whether or not County, Municipality and Subdivision information is "
+                    "included in the artist location variables created. Regardless of these settings, this information will be included "
+                    "if a County, Municipality or Subdivision is the area specified for an artist.</p></body></html>"
+                )
+            )
+        )
+        self.ui.cb_area_county.setText(self.api.tr("ui.cb_area_county", "Include location county"))
+        self.ui.cb_area_municipality.setText(self.api.tr("ui.cb_area_municipality", "Include location municipality"))
+        self.ui.cb_area_subdivision.setText(self.api.tr("ui.cb_area_subdivision", "Include location subdivision"))
 
         # Enable external link
         self.ui.format_description.setOpenExternalLinks(True)
@@ -554,23 +575,28 @@ class AdditionalArtistsDetailsOptionsPage(OptionsPage):
     def load(self):
         """Load the option settings.
         """
-        self.ui.cb_process_tracks.setChecked(self.api.global_config.setting[OPT_PROCESS_TRACKS])
-        self.ui.cb_area_county.setChecked(self.api.global_config.setting[OPT_AREA_COUNTY])
-        self.ui.cb_area_municipality.setChecked(self.api.global_config.setting[OPT_AREA_MUNICIPALITY])
-        self.ui.cb_area_subdivision.setChecked(self.api.global_config.setting[OPT_AREA_SUBDIVISION])
+        self.ui.cb_process_tracks.setChecked(self.api.plugin_config[OPT_PROCESS_TRACKS])
+        self.ui.cb_area_county.setChecked(self.api.plugin_config[OPT_AREA_COUNTY])
+        self.ui.cb_area_municipality.setChecked(self.api.plugin_config[OPT_AREA_MUNICIPALITY])
+        self.ui.cb_area_subdivision.setChecked(self.api.plugin_config[OPT_AREA_SUBDIVISION])
 
     def save(self):
         """Save the option settings.
         """
         # self._set_settings(self.api.global_config.setting)
-        self.api.global_config.setting[OPT_PROCESS_TRACKS] = self.ui.cb_process_tracks.isChecked()
-        self.api.global_config.setting[OPT_AREA_COUNTY] = self.ui.cb_area_county.isChecked()
-        self.api.global_config.setting[OPT_AREA_MUNICIPALITY] = self.ui.cb_area_municipality.isChecked()
-        self.api.global_config.setting[OPT_AREA_SUBDIVISION] = self.ui.cb_area_subdivision.isChecked()
+        self.api.plugin_config[OPT_PROCESS_TRACKS] = self.ui.cb_process_tracks.isChecked()
+        self.api.plugin_config[OPT_AREA_COUNTY] = self.ui.cb_area_county.isChecked()
+        self.api.plugin_config[OPT_AREA_MUNICIPALITY] = self.ui.cb_area_municipality.isChecked()
+        self.api.plugin_config[OPT_AREA_SUBDIVISION] = self.ui.cb_area_subdivision.isChecked()
 
 
 def enable(api: PluginApi):
     """Called when plugin is enabled."""
+    api.plugin_config.register_option(OPT_PROCESS_TRACKS, False)
+    api.plugin_config.register_option(OPT_AREA_COUNTY, True)
+    api.plugin_config.register_option(OPT_AREA_MUNICIPALITY, True)
+    api.plugin_config.register_option(OPT_AREA_SUBDIVISION, True)
+
     plugin = ArtistDetailsPlugin(api)
     api.register_options_page(AdditionalArtistsDetailsOptionsPage)
     api.register_album_post_removal_processor(plugin.remove_album)

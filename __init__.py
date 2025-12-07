@@ -224,7 +224,7 @@ class ArtistDetailsPlugin:
         artists = set(artist.id for artist in album.get_album_artists())
         self._make_empty_target(album.id)
         self.albums[album.id][ALBUM_ARTISTS] = artists
-        if not self.api.global_config.setting[OPT_PROCESS_TRACKS]:
+        if not self.api.plugin_config[OPT_PROCESS_TRACKS]:
             self.api.logger.info("Track artist processing is disabled.")
         self._artist_processing(artists, album, album_metadata, 'Album')
 
@@ -243,7 +243,7 @@ class ArtistDetailsPlugin:
         # Test for valid metadata node.
         # The 'artist-credit' key should always be there.
         # This check is to avoid a runtime error if it doesn't exist for some reason.
-        if self.api.global_config.setting[OPT_PROCESS_TRACKS]:
+        if self.api.plugin_config[OPT_PROCESS_TRACKS]:
             if 'artist-credit' in track_metadata:
                 for artist_credit in track_metadata['artist-credit']:
                     if 'artist' in artist_credit:
@@ -505,9 +505,9 @@ class ArtistDetailsPlugin:
                 location.append(area.name)
             else:
                 if (
-                    (area.type == AREA_TYPE_COUNTY and self.api.global_config.setting[OPT_AREA_COUNTY])
-                    or (area.type == AREA_TYPE_MUNICIPALITY and self.api.global_config.setting[OPT_AREA_MUNICIPALITY])
-                    or (area.type == AREA_TYPE_SUBDIVISION and self.api.global_config.setting[OPT_AREA_SUBDIVISION])
+                    (area.type == AREA_TYPE_COUNTY and self.api.plugin_config[OPT_AREA_COUNTY])
+                    or (area.type == AREA_TYPE_MUNICIPALITY and self.api.plugin_config[OPT_AREA_MUNICIPALITY])
+                    or (area.type == AREA_TYPE_SUBDIVISION and self.api.plugin_config[OPT_AREA_SUBDIVISION])
                 ):
                     location.append(area.name)
         return country, ', '.join(location)
@@ -583,7 +583,6 @@ class AdditionalArtistsDetailsOptionsPage(OptionsPage):
     def save(self):
         """Save the option settings.
         """
-        # self._set_settings(self.api.global_config.setting)
         self.api.plugin_config[OPT_PROCESS_TRACKS] = self.ui.cb_process_tracks.isChecked()
         self.api.plugin_config[OPT_AREA_COUNTY] = self.ui.cb_area_county.isChecked()
         self.api.plugin_config[OPT_AREA_MUNICIPALITY] = self.ui.cb_area_municipality.isChecked()

@@ -26,6 +26,7 @@
 
 from collections import namedtuple
 from functools import partial
+from typing import Callable
 
 from picard.plugin3.api import (
     OptionsPage,
@@ -76,13 +77,13 @@ class CustomHelper(MBAPIHelper):
     """Custom MusicBrainz API helper to retrieve artist and area information.
     """
 
-    def get_artist_by_id(self, _id, handler, inc=None, priority=False, important=False,
-                         mblogin=False, refresh=False):
+    def get_artist_by_id(self, _id: str, handler: Callable, inc: list = None, priority: bool = False, important:bool = False,
+                         mblogin: bool = False, refresh: bool = False):
         """Get information for the specified artist MBID.
 
         Args:
             _id (str): Artist MBID to retrieve.
-            handler (object): Callback used to process the returned information.
+            handler (Callable): Callback used to process the returned information.
             inc (list, optional): List of includes to add to the API call. Defaults to None.
             priority (bool, optional): Process the request at a high priority. Defaults to False.
             important (bool, optional): Identify the request as important. Defaults to False.
@@ -94,12 +95,13 @@ class CustomHelper(MBAPIHelper):
         """
         return self._get_by_id(ARTIST, _id, handler, inc, priority=priority, important=important, mblogin=mblogin, refresh=refresh)
 
-    def get_area_by_id(self, _id, handler, inc=None, priority=False, important=False, mblogin=False, refresh=False):
+    def get_area_by_id(self, _id: str, handler: Callable, inc: list = None, priority: bool = False, important: bool = False,
+                       mblogin: bool = False, refresh: bool = False):
         """Get information for the specified area MBID.
 
         Args:
             _id (str): Area MBID to retrieve.
-            handler (object): Callback used to process the returned information.
+            handler (Callable): Callback used to process the returned information.
             inc (list, optional): List of includes to add to the API call. Defaults to None.
             priority (bool, optional): Process the request at a high priority. Defaults to False.
             important (bool, optional): Identify the request as important. Defaults to False.
@@ -129,26 +131,26 @@ class ArtistDetailsPlugin:
     }
     album_processing_count = {}
     albums = {}
-    album_area_requests = {}
+    album_area_requests: dict[str, set] = {}
 
     def __init__(self, api: PluginApi):
         self.api = api
 
-    def _add_album_area_request(self, album_id, area_id):
+    def _add_album_area_request(self, album_id: str, area_id: str):
         if album_id not in self.album_area_requests:
             self.album_area_requests[album_id] = set()
         self.album_area_requests[album_id].add(area_id)
 
-    def _remove_album_area_request(self, album_id, area_id):
+    def _remove_album_area_request(self, album_id: str, area_id: str):
         if album_id in self.album_area_requests:
             self.album_area_requests[album_id].discard(area_id)
 
-    def _get_album_area_request_count(self, album_id):
+    def _get_album_area_request_count(self, album_id: str):
         if album_id not in self.album_area_requests:
             return 0
         return len(self.album_area_requests[album_id])
 
-    def _make_empty_target(self, album_id):
+    def _make_empty_target(self, album_id: str):
         """Create an empty album target node if it doesn't exist.
 
         Args:
@@ -157,7 +159,7 @@ class ArtistDetailsPlugin:
         if album_id not in self.albums:
             self.albums[album_id] = {ALBUM_ARTISTS: set(), TRACKS: []}
 
-    def _add_target(self, album_id, artists, target_metadata):
+    def _add_target(self, album_id: str, artists: set, target_metadata: PluginApi.Metadata):
         """Add a metadata target to update for an album.
 
         Args:
@@ -168,7 +170,7 @@ class ArtistDetailsPlugin:
         self._make_empty_target(album_id)
         self.albums[album_id][TRACKS].append(MetadataPair(artists, target_metadata))
 
-    def _remove_album(self, album_id):
+    def _remove_album(self, album_id: str):
         """Removes an album from the metadata processing dictionary.
 
         Args:
@@ -178,7 +180,7 @@ class ArtistDetailsPlugin:
         self.albums.pop(album_id, None)
         self.album_processing_count.pop(album_id, None)
 
-    def _album_add_request(self, album):
+    def _album_add_request(self, album: PluginApi.Album):
         """Increment the number of pending requests for an album.
 
         Args:
@@ -187,9 +189,9 @@ class ArtistDetailsPlugin:
         if album.id not in self.album_processing_count:
             self.album_processing_count[album.id] = 0
         self.album_processing_count[album.id] += 1
-        album._requests += 1
+        # album._requests += 1
 
-    def _album_remove_request(self, album):
+    def _album_remove_request(self, album: PluginApi.Album):
         """Decrement the number of pending requests for an album.
 
         Args:
@@ -198,12 +200,12 @@ class ArtistDetailsPlugin:
         if album.id not in self.album_processing_count:
             self.album_processing_count[album.id] = 1
         self.album_processing_count[album.id] -= 1
-        album._requests -= 1
+        # album._requests -= 1
         if self._get_album_area_request_count(album.id) < 1:
             self._save_artist_metadata(album.id)
             album._finalize_loading(None)   # pylint: disable=protected-access
 
-    def remove_album(self, _api: PluginApi, album):
+    def remove_album(self, _api: PluginApi, album: PluginApi.Album):
         """Remove the album from the albums processing dictionary.
 
         Args:
@@ -212,7 +214,7 @@ class ArtistDetailsPlugin:
         """
         self._remove_album(album.id)
 
-    def make_album_vars(self, _api: PluginApi, album, album_metadata, _release_metadata):
+    def make_album_vars(self, _api: PluginApi, album: PluginApi.Album, album_metadata, _release_metadata: dict):
         """Process album artists.
 
         Args:
@@ -228,7 +230,8 @@ class ArtistDetailsPlugin:
             self.api.logger.info("Track artist processing is disabled.")
         self._artist_processing(artists, album, album_metadata, 'Album')
 
-    def make_track_vars(self, _api: PluginApi, album, album_metadata, track_metadata, _release_metadata):
+    def make_track_vars(self, _api: PluginApi, album: PluginApi.Album, album_metadata: PluginApi.Metadata,
+                        track_metadata: dict, _release_metadata: dict):
         """Process track artists.
 
         Args:
@@ -257,7 +260,7 @@ class ArtistDetailsPlugin:
                 self._metadata_error(album.id, 'artist-credit', source_type)
         self._artist_processing(artists, album, album_metadata, 'Track')
 
-    def _artist_processing(self, artists, album, destination_metadata, source_type):
+    def _artist_processing(self, artists: set, album: PluginApi.Album, destination_metadata: PluginApi.Metadata, source_type: str):
         """Retrieves the information for each artist not already processed.
 
         Args:
@@ -276,7 +279,7 @@ class ArtistDetailsPlugin:
         self._add_target(album.id, artists, destination_metadata)
         self._save_artist_metadata(album.id)
 
-    def _save_artist_metadata(self, album_id):
+    def _save_artist_metadata(self, album_id: str):
         """Saves the new artist details variables to the metadata targets for the specified album.
 
         Args:
@@ -297,7 +300,7 @@ class ArtistDetailsPlugin:
                 if artist in self.result_cache[ARTIST]:
                     self._set_artist_metadata(destination_metadata, artist, self.result_cache[ARTIST][artist])
 
-    def _set_artist_metadata(self, destination_metadata, artist_id, artist_info):
+    def _set_artist_metadata(self, destination_metadata: PluginApi.Metadata, artist_id: str, artist_info: dict):
         """Adds the artist information to the destination metadata.
 
         Args:
@@ -396,7 +399,7 @@ class ArtistDetailsPlugin:
             self._remove_album_area_request(album.id, area)
             self._album_remove_request(album)
 
-    def _area_logger(self, area_id, area_name, area_type):
+    def _area_logger(self, area_id: str, area_name: str, area_type: str):
         """Adds a log entry for the area retrieved.
 
         Args:
@@ -406,7 +409,8 @@ class ArtistDetailsPlugin:
         """
         self.api.logger.debug("Adding area: %s => %s of type '%s'", area_id, area_name, area_type)
 
-    def _parse_area_relation(self, area_id, area_relation, album, area_name, area_type, area_type_text):
+    def _parse_area_relation(self, area_id: str, area_relation: dict, album: PluginApi.Album, area_name: str,
+                             area_type: str, area_type_text: str):
         """Parse an area relation to extract the area information.
 
         Args:
@@ -449,7 +453,7 @@ class ArtistDetailsPlugin:
             self.result_cache[AREA][_id] = Area(area_id, name, '', _type, type_text)
 
     @staticmethod
-    def _parse_area(area_info):
+    def _parse_area(area_info: dict) -> tuple[str, str, str, str, str]:
         """Parse a dictionary of area information to return selected elements.
 
         Args:
@@ -472,7 +476,7 @@ class ArtistDetailsPlugin:
                 country = area_info[ISO_CODES_2][0][:2]
         return (area_id, area_name, country, area_type, area_type_text)
 
-    def _metadata_error(self, album_id, metadata_element, metadata_group):
+    def _metadata_error(self, album_id: str, metadata_element: str, metadata_group: str):
         """Logs metadata-related errors.
 
         Args:
@@ -482,7 +486,7 @@ class ArtistDetailsPlugin:
         """
         self.api.logger.error("Album '%s' missing '%s' in %s metadata.", album_id, metadata_element, metadata_group)
 
-    def _drill_area(self, area_id):
+    def _drill_area(self, area_id: str) -> tuple[str, str]:
         """Drills up from the specified area to determine the two-character
         country code and the full location description for the area.
 

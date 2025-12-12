@@ -335,7 +335,14 @@ class ArtistDetailsPlugin:
             artist=artist_id,
             album=album,
         )
-        return helper.get_artist_by_id(artist_id, handler)
+        # return helper.get_artist_by_id(artist_id, handler)
+        return self.api.add_album_task(
+            album=album,
+            task_id=f"Artist={artist_id}",
+            description=f"Get info for artist: {artist_id}",
+            timeout=10.,
+            request_factory=lambda: helper.get_artist_by_id(artist_id, handler)
+        )
 
     def _artist_submission_handler(self, document, _reply, error, artist=None, album=None):
         """Handles the response from the webservice requests for artist information.
@@ -379,7 +386,14 @@ class ArtistDetailsPlugin:
             area=area_id,
             album=album,
         )
-        return helper.get_area_by_id(area_id, handler)
+        # return helper.get_area_by_id(area_id, handler)
+        return self.api.add_album_task(
+            album=album,
+            task_id=f"Area={area_id}",
+            description=f"Get info for area: {area_id}",
+            timeout=10.,
+            request_factory=lambda: helper.get_area_by_id(area_id, handler)
+        )
 
     def _area_submission_handler(self, document, _reply, error, area=None, album=None):
         """Handles the response from the webservice requests for area information.
@@ -525,9 +539,8 @@ class AdditionalArtistsDetailsOptionsPage(OptionsPage):
     TITLE = "Additional Artists Details"
     PARENT = "plugins"
 
-    def __init__(self, api: PluginApi = None, parent=None):
+    def __init__(self, parent=None):
         super(AdditionalArtistsDetailsOptionsPage, self).__init__(parent)
-        self.api = api
         self.TITLE = self.api.tr('options.page_title', "Additional Artists Details")
 
         self.ui = Ui_AdditionalArtistsDetailsOptionsPage()

@@ -28,7 +28,6 @@ from collections import namedtuple
 from functools import partial
 from typing import Callable
 
-from picard.config import get_config
 from picard.plugin3.api import (
     Album,
     Metadata,
@@ -656,8 +655,7 @@ def enable(api: PluginApi):
 
 
 def migrate_settings(api: PluginApi):
-    cfg = get_config()
-    if cfg.setting.raw_value('aad_process_tracks') is None:
+    if api.global_config.setting.raw_value('aad_process_tracks') is None:
         return
 
     api.logger.info("Migrating settings from 2.x version.")
@@ -670,8 +668,8 @@ def migrate_settings(api: PluginApi):
     ]
 
     for old_key, new_key, qtype in mapping:
-        if cfg.setting.raw_value(old_key) is None:
+        if api.global_config.setting.raw_value(old_key) is None:
             api.logger.debug("No old setting for key: '%s'", old_key,)
             continue
-        api.plugin_config[new_key] = cfg.setting.raw_value(old_key, qtype=qtype)
-        cfg.setting.remove(old_key)
+        api.plugin_config[new_key] = api.global_config.setting.raw_value(old_key, qtype=qtype)
+        api.global_config.setting.remove(old_key)
